@@ -113,6 +113,28 @@
     return n;
   }
 
+  // 단계별 외우기: 단계가 오를수록 빈칸이 늘어난다
+  // 0 전체 보기 / 1 중요한 낱말 절반(긴 것부터) / 2 중요한 낱말 전부 / 3 전부 빈칸
+  const SMALL = new Set(('a an the to of in on at for and or but with from by about as is are am be was were do does did not ' +
+    'i you we they he she it me us them my your our their this that these those please let can will would could shall so').split(' '));
+  const MEMO_LEVELS = 4;
+  function clozeMask(answer, level) {
+    const words = splitWords(answer);
+    const toks = words.map(wordTokens);
+    const content = words.map((_, i) => i).filter(i => toks[i].length && !toks[i].every(t => SMALL.has(t)));
+    const hide = new Set();
+    if (level === 1) {
+      const len = i => words[i].replace(/[^A-Za-z0-9]/g, '').length;
+      content.slice().sort((a, b) => len(b) - len(a) || a - b)
+        .slice(0, Math.ceil(content.length / 2)).forEach(i => hide.add(i));
+    } else if (level === 2) {
+      content.forEach(i => hide.add(i));
+    } else if (level >= 3) {
+      words.forEach((_, i) => { if (toks[i].length) hide.add(i); });
+    }
+    return words.map((w, i) => ({ w, hidden: hide.has(i) }));
+  }
+
   function shuffle(arr, rand = Math.random) {
     const a = arr.slice();
     for (let i = a.length - 1; i > 0; i--) {
@@ -122,7 +144,7 @@
     return a;
   }
 
-  const Core = { tokenize, compare, compareOne, verdict, recordResult, REVIEW_NEEDED, dateKey, daysUntil, streak, shuffle };
+  const Core = { tokenize, compare, compareOne, verdict, recordResult, REVIEW_NEEDED, dateKey, daysUntil, streak, shuffle, clozeMask, MEMO_LEVELS };
   if (typeof module !== 'undefined' && module.exports) module.exports = Core;
   else root.Core = Core;
 })(typeof window !== 'undefined' ? window : globalThis);

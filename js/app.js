@@ -86,13 +86,15 @@
   };
 
   // ── 연습 세션 ──
-  let session = null; // { title, back, items, i, card, results: [] }
-  function startSession(title, items, back) {
-    session = { title, back, items, i: 0, results: [], card: newCard() };
+  // mode: 'drill' 한국어 보고 말하기 / 'memo' 단계별 외우기(보고 읽기 → 빈칸 늘리기 → 한국어만)
+  let session = null; // { mode, title, back, items, i, card, results: [] }
+  function startSession(title, items, back, mode = 'drill') {
+    session = { mode, title, back, items, i: 0, results: [], card: newCard() };
     location.hash = '#drill';
     render();
   }
-  function newCard() { return { phase: 'ask', spoken: '', result: null, typing: false, msg: '' }; }
+  function newCard(level = 0) { return { phase: 'ask', spoken: '', result: null, typing: false, msg: '', level, live: [] }; }
+  const MEMO_STEPS = ['보고 읽기', '빈칸 조금', '빈칸 많이', '한국어만'];
 
   // ── 앱 설치 ──
   // 크롬은 설치할 수 있을 때 beforeinstallprompt를 보낸다. 받아 두었다가 버튼을 누르면 띄운다
@@ -178,6 +180,7 @@
         <button class="btn primary" data-act="start-set" data-id="${set.id}">🎤 순서대로 연습</button>
         <button class="btn" data-act="start-set" data-id="${set.id}" data-shuffle="1">🔀 섞어서</button>
       </div>
+      <button class="btn memo-btn" data-act="start-memo" data-src="${set.id}">🧩 단계별 외우기 <small>보고 읽기 → 빈칸 채우기 → 한국어만</small></button>
       <ul class="list">${items.map(listRow).join('')}</ul>
     </main>`;
   }
@@ -212,6 +215,7 @@
         <button class="btn primary">추가하기</button>
       </form>
       ${mine.length ? `<div class="actions"><button class="btn primary" data-act="start-mine">🎤 내 문장 연습 (${mine.length})</button></div>
+      <button class="btn memo-btn" data-act="start-memo" data-src="mine">🧩 단계별 외우기 <small>보고 읽기 → 빈칸 채우기 → 한국어만</small></button>
       <ul class="list">${mineItems().map(it => listRow(it).replace('</li>', `<button class="del" data-act="del-mine" data-id="${esc(it.key.slice(5))}">삭제</button></li>`)).join('')}</ul>` : ''}
     </main>`;
   }
@@ -291,6 +295,64 @@
     </main>`;
   }
 
+  // 빈칸 문장. hits: 말해서 맞힌 낱말(채점 순서와 같음)
+  function clozeHtml(it, c) {
+    const hits = c.result ? c.result.words.map(w => w.hit) : c.live;
+    return Core.clozeMask(it.en, c.level).map((m, i) => {
+      if (!m.hidden) return `<span class="${c.result && !hits[i] ? 'miss' : ''}">${esc(m.w)}</span>`;
+      if (hits[i]) return `<span class="filled">${esc(m.w)}</span>`;
+      if (c.peek || c.result) return `<span class="peek">${esc(m.w)}</span>`;
+      const [, pre, word, post] = m.w.match(/^([^A-Za-z0-9]*)(.*?)([^A-Za-z0-9]*)$/);
+      return `${esc(pre)}<span class="blank" style="width:${Math.max(1.6, word.length * 0.62)}em"></span>${esc(post)}`;
+    }).join(' ');
+  }
+
+  function viewMemo() {
+    const s = session;
+    if (s.i >= s.items.length) return viewSummary();
+    const it = s.items[s.i], c = s.card, lv = c.level;
+    const pct = Math.round(s.i / s.items.length * 100);
+    const last = lv === Core.MEMO_LEVELS - 1;
+    let body;
+    if (c.phase !== 'result') {
+      body = `
+        <button class="mic ${c.phase === 'listening' ? 'on' : ''}" data-act="mic" aria-label="말하기">🎤</button>
+        <div class="mic-label">${c.phase === 'listening' ? '듣는 중이에요… 다 말하면 다시 누르세요' : lv === 0 ? '눌러서 소리 내어 읽기' : '눌러서 문장 전체 말하기'}</div>
+        <div class="spoken">${esc(c.spoken)}</div>
+        ${c.msg ? `<div class="msg">${esc(c.msg)}</div>` : ''}
+        ${c.typing ? `<form class="typing" data-form="type"><input name="t" autocomplete="off" autocapitalize="sentences" placeholder="영어로 입력" autofocus><button class="btn">확인</button></form>` : ''}
+        <div class="row">
+          ${lv > 0 && !c.peek ? '<button class="btn ghost" data-act="peek">👀 살짝 보기</button>' : ''}
+          ${c.typing ? '' : '<button class="btn ghost" data-act="type">⌨️ 입력하기</button>'}
+        </div>`;
+    } else {
+      const v = Core.verdict(c.result.score);
+      const pass = v === 'good';
+      const label = { good: '👏 잘 말했어요!', close: '👍 거의 다 왔어요', retry: '💪 한 번 더 해 볼까요?' }[v];
+      const nextLabel = last ? '다음 문장 ▶' : `다음 단계: ${MEMO_STEPS[lv + 1]} ▶`;
+      body = `
+        <div class="said"><span>내가 한 말</span>${esc(c.spoken)}</div>
+        <div class="verdict ${v}">${label}</div>
+        ${it.tip ? `<div class="tip">💡 ${esc(it.tip)}</div>` : ''}
+        ${pass
+          ? `<button class="btn primary wide" data-act="memo-next">${nextLabel}</button>
+             <button class="btn ghost" data-act="memo-again">🎤 한 번 더</button>`
+          : `<button class="btn primary wide" data-act="memo-again">🎤 다시 말하기</button>
+             <button class="btn ghost" data-act="memo-next">${last ? '넘어가기 (복습함에 넣기)' : '그래도 다음 단계로'}</button>`}`;
+    }
+    return header(s.title, s.back) + `
+    <main class="drill">
+      <div class="progress"><span class="bar"><i style="width:${pct}%"></i></span><small>${s.i + 1} / ${s.items.length}</small></div>
+      <ol class="steps">${MEMO_STEPS.map((n, i) => `<li class="${i < lv ? 'done' : i === lv ? 'on' : ''}">${n}</li>`).join('')}</ol>
+      <section class="card prompt memo">
+        <div class="ko ${last ? 'big' : 'small'}">${esc(it.ko)}</div>
+        <div class="cloze ${last ? 'small' : ''}">${clozeHtml(it, c)}</div>
+        ${lv === 0 || c.phase === 'result' ? `<button class="play" data-act="speak" data-text="${esc(it.en)}" aria-label="듣기">🔊</button>` : ''}
+      </section>
+      <section class="drill-body">${body}</section>
+    </main>`;
+  }
+
   function viewSummary() {
     const s = session;
     const ok = s.results.filter(r => r.ok).length;
@@ -320,7 +382,7 @@
     else if (route === 'review') html = viewReview();
     else if (route === 'mine') html = viewMine();
     else if (route === 'settings') html = viewSettings();
-    else if (route === 'drill') html = viewDrill();
+    else if (route === 'drill') html = session && session.mode === 'memo' ? viewMemo() : viewDrill();
     else html = viewHome();
     app.innerHTML = html;
     const auto = app.querySelector('[autofocus]');
@@ -330,7 +392,8 @@
   // ── 연습 동작 ──
   function showResult(spoken, candidates) {
     const it = session.items[session.i];
-    const answers = [it.en, ...(it.alt || [])];
+    // 단계별 외우기는 빈칸이 대표 답에 걸려 있어서 대표 답하고만 비교한다
+    const answers = session.mode === 'memo' ? [it.en] : [it.en, ...(it.alt || [])];
     let best = null, bestText = spoken;
     for (const cand of candidates) {
       const r = Core.compare(cand, answers);
@@ -350,6 +413,13 @@
       c.spoken = text;
       const el = app.querySelector('.spoken');
       if (el) el.textContent = text;
+      // 말하는 동안 맞힌 낱말이 빈칸에 바로 채워진다
+      const cz = app.querySelector('.cloze');
+      if (cz && session.mode === 'memo') {
+        const it = session.items[session.i];
+        c.live = Core.compareOne(text, it.en).words.map(w => w.hit);
+        cz.innerHTML = clozeHtml(it, c);
+      }
     }, (res, err) => {
       if (session.card !== c) return;
       if (res) { showResult(res.text, res.candidates); return; }
@@ -388,9 +458,25 @@
     }
     else if (act === 'start-review') startSession('😅 복습', Core.shuffle(stuckItems()), '#review');
     else if (act === 'start-mine') startSession('✏️ 내 문장', mineItems(), '#mine');
+    else if (act === 'start-memo') {
+      const src = b.dataset.src;
+      if (src === 'mine') startSession('🧩 내 문장 외우기', mineItems(), '#mine', 'memo');
+      else {
+        const set = SETS.find(s => s.id === src);
+        startSession('🧩 ' + set.title, setItems(set), '#set/' + set.id, 'memo');
+      }
+    }
     else if (act === 'retry-stuck') {
       const items = session.results.filter(r => !r.ok).map(r => session.items.find(it => it.key === r.key));
-      startSession(session.title, items, session.back);
+      startSession(session.title, items, session.back, session.mode);
+    }
+    else if (act === 'peek') { session.card.peek = true; render(); }
+    else if (act === 'memo-again') { session.card = newCard(session.card.level); render(); onMic(); }
+    else if (act === 'memo-next') {
+      const c = session.card;
+      const pass = !!c.result && Core.verdict(c.result.score) === 'good';
+      if (c.level < Core.MEMO_LEVELS - 1) { session.card = newCard(c.level + 1); render(); }
+      else judge(pass);
     }
     else if (act === 'mic') onMic();
     else if (act === 'tip') { session.card.showTip = true; render(); }

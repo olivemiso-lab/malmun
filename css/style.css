@@ -124,6 +124,22 @@ input:focus { outline: 2px solid var(--sky-bg); border-color: var(--sky-ink); }
 .tip { background: var(--lemon-bg); color: var(--lemon-ink); border-radius: 12px; padding: 10px 14px; font-size: 14px; width: 100%; margin-top: 10px; }
 .drill-body .tip { margin-top: 0; }
 .rate { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 100%; margin-top: 4px; }
+/* 단계별 외우기 */
+.memo-btn { width: 100%; flex-direction: column; gap: 0; margin-bottom: 14px; background: var(--mint-bg); border-color: var(--mint-bg); color: var(--mint-ink); border-radius: var(--radius); }
+.memo-btn small { font-weight: 500; font-size: 12px; }
+.steps { list-style: none; padding: 0; margin: 0 0 12px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+.steps li { text-align: center; font-size: 12px; padding: 6px 2px; border-radius: 999px; background: var(--card); border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
+.steps li.done { background: var(--mint-bg); border-color: var(--mint-bg); color: var(--mint-ink); }
+.steps li.on { background: var(--peach-ink); border-color: var(--peach-ink); color: #fff; font-weight: 700; }
+.prompt.memo { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.ko.small { font-size: 15px; color: var(--muted); }
+.cloze { font-size: 22px; font-weight: 600; line-height: 2.1; word-break: keep-all; }
+.cloze.small { font-size: 18px; }
+.cloze .blank { display: inline-block; height: 1.1em; vertical-align: -0.15em; border-bottom: 3px solid var(--peach-ink); background: var(--card); border-radius: 6px 6px 0 0; }
+.cloze .filled { color: var(--mint-ink); background: var(--mint-bg); border-radius: 6px; padding: 0 3px; }
+.cloze .peek { color: var(--peach-ink); }
+.cloze .miss { text-decoration: underline; text-decoration-color: var(--peach-ink); text-decoration-thickness: 2px; text-underline-offset: 4px; }
+.btn.wide { width: 100%; }
 .summary { text-align: center; }
 .summary h2 { margin: 6px 0; }
 .big-emoji { font-size: 48px; }

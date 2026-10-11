@@ -70,6 +70,22 @@ test('연속 연습일', () => {
   assert.strictEqual(Core.streak(days, '2026-10-14'), 0);
 });
 
+test('단계별 빈칸: 단계가 오를수록 늘어남', () => {
+  const s = 'Please make groups of four.';
+  const hidden = lv => Core.clozeMask(s, lv).filter(w => w.hidden).map(w => w.w);
+  assert.deepStrictEqual(hidden(0), []);
+  assert.deepStrictEqual(hidden(1), ['make', 'groups']);  // 중요한 낱말 3개 중 긴 것 2개
+  assert.deepStrictEqual(hidden(2), ['make', 'groups', 'four.']);
+  assert.deepStrictEqual(hidden(3), ['Please', 'make', 'groups', 'of', 'four.']);
+  // 빈칸 위치는 채점 낱말 순서와 같아야 함
+  assert.strictEqual(Core.clozeMask(s, 2).length, Core.compareOne('', s).words.length);
+});
+
+test('단계별 빈칸: 작은 말만 있는 문장도 마지막엔 다 가림', () => {
+  assert.ok(Core.clozeMask('Let me think.', 1).some(w => w.hidden));
+  assert.ok(Core.clozeMask('Let me show you first.', 3).every(w => w.hidden));
+});
+
 test('연습 문장: 빈 칸 없고, 대표 답을 그대로 말하면 만점', () => {
   const src = fs.readFileSync(path.join(__dirname, '../js/data.js'), 'utf8');
   const SETS = new Function(src + '; return SETS;')();
