@@ -98,7 +98,12 @@
   // 크롬은 설치할 수 있을 때 beforeinstallprompt를 보낸다. 받아 두었다가 버튼을 누르면 띄운다
   let installEvent = null;
   const installed = () => matchMedia('(display-mode: standalone)').matches;
-  const isSamsung = /SamsungBrowser/i.test(navigator.userAgent);
+  const UA = navigator.userAgent;
+  const isAndroid = /Android/i.test(UA);
+  // 카톡·네이버 등 앱 안 브라우저, 삼성 인터넷은 설치·음성 인식이 안 되거나 불안정하다
+  const notChrome = /SamsungBrowser|KAKAOTALK|NAVER|Line\/|Instagram|FBAN|FBAV|Whale|EdgA|OPR|; wv\)/i.test(UA) || !/Chrome\//.test(UA);
+  // 안드로이드에서 크롬으로 바로 여는 주소
+  const chromeUrl = () => 'intent://' + location.host + location.pathname + '#Intent;scheme=https;package=com.android.chrome;end';
   window.addEventListener('beforeinstallprompt', e => {
     e.preventDefault();
     installEvent = e;
@@ -108,8 +113,9 @@
 
   function installBanner() {
     if (installed()) return '';
-    if (isSamsung) return `<div class="banner warn">이 앱은 <b>크롬</b>에서 써 주세요. 삼성 인터넷은 음성 인식이 잘 안 돼요.<br>주소를 복사해 크롬에서 열어 주세요.</div>`;
+    if (isAndroid && notChrome) return `<a class="banner install" href="${chromeUrl()}">🌐 <span><b>크롬으로 열기</b><small>지금 브라우저에서는 설치와 음성 인식이 잘 안 돼요</small></span></a>`;
     if (installEvent) return `<button class="banner install" data-act="install">📲 <span><b>핸드폰에 앱으로 설치</b><small>홈 화면에서 바로 열 수 있어요</small></span></button>`;
+    if (isAndroid) return `<div class="banner warn">📲 <b>앱으로 설치하기</b>: 오른쪽 위 <b>⋮</b> → <b>홈 화면에 추가</b> → <b>설치</b></div>`;
     return '';
   }
 
