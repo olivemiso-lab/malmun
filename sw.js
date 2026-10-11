@@ -3,7 +3,7 @@
 //  ⚠ 배포할 때마다 VERSION을 올리고, 파일을 추가·삭제하면 APP_FILES도 고칠 것
 //  (음성 인식은 크롬이 인터넷으로 처리하므로 오프라인에서는 ⌨️ 입력하기만 됨)
 // ════════════════════════════════════════════════════
-const VERSION = '2026-10-11-5';
+const VERSION = '2026-10-11-6';
 const CACHE = 'malmun-' + VERSION;
 const APP_FILES = [
   './index.html',

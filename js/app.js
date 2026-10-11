@@ -17,6 +17,7 @@
   let settings = Object.assign({}, DEFAULT_SETTINGS, store.get('settings', {}));
   let progress = store.get('progress', { stuck: {}, done: {}, days: {} });
   let mine = store.get('mine', []);
+  let swVersion = ''; // 서비스 워커가 알려 주는 버전(설정 화면에 표시)
 
   const app = document.getElementById('app');
   const today = () => Core.dateKey(new Date());
@@ -524,7 +525,6 @@
   render();
 
   // 앱을 켤 때마다 새 버전을 확인하고, 새 서비스 워커가 자리 잡으면 한 번 새로 고친다
-  let swVersion = '';
   if ('serviceWorker' in navigator && location.protocol === 'https:') {
     const hadController = !!navigator.serviceWorker.controller;
     navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(reg => reg.update()).catch(() => {});
