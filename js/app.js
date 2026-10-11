@@ -239,6 +239,7 @@
         <p class="hint">이 기기에만 저장돼요. 다른 기기와 공유되지 않아요.</p>
         <button class="btn danger" data-act="reset">연습 기록 지우기</button>
       </div>
+      <p class="hint version">버전 ${esc(swVersion || '확인 중')}</p>
     </main>`;
   }
 
@@ -522,7 +523,20 @@
   if (location.hash === '#drill') location.hash = '';
   render();
 
+  // 앱을 켤 때마다 새 버전을 확인하고, 새 서비스 워커가 자리 잡으면 한 번 새로 고친다
+  let swVersion = '';
   if ('serviceWorker' in navigator && location.protocol === 'https:') {
-    navigator.serviceWorker.register('sw.js');
+    const hadController = !!navigator.serviceWorker.controller;
+    navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(reg => reg.update()).catch(() => {});
+    let reloaded = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!hadController || reloaded || session) return; // 연습 도중에는 끊지 않는다
+      reloaded = true;
+      location.reload();
+    });
+    navigator.serviceWorker.addEventListener('message', e => {
+      if (e.data && e.data.version) { swVersion = e.data.version; if (location.hash === '#settings') render(); }
+    });
+    navigator.serviceWorker.ready.then(reg => reg.active && reg.active.postMessage('version'));
   }
 })();

@@ -3,7 +3,7 @@
 //  ⚠ 배포할 때마다 VERSION을 올리고, 파일을 추가·삭제하면 APP_FILES도 고칠 것
 //  (음성 인식은 크롬이 인터넷으로 처리하므로 오프라인에서는 ⌨️ 입력하기만 됨)
 // ════════════════════════════════════════════════════
-const VERSION = '2026-10-11-4';
+const VERSION = '2026-10-11-5';
 const CACHE = 'malmun-' + VERSION;
 const APP_FILES = [
   './index.html',
@@ -26,12 +26,18 @@ self.addEventListener('activate', e => {
     .then(() => self.clients.claim()));
 });
 
+// 화면에서 버전을 물으면 알려 준다
+self.addEventListener('message', e => {
+  if (e.data === 'version' && e.source) e.source.postMessage({ version: VERSION });
+});
+
 // 인터넷이 되면 새 파일, 안 되면 캐시
+// cache: 'no-cache' — 브라우저가 기억해 둔 예전 파일(GitHub는 최대 10분)을 쓰지 않고 서버에 확인한다
 self.addEventListener('fetch', e => {
   const req = e.request;
   if (req.method !== 'GET' || new URL(req.url).origin !== location.origin) return;
   e.respondWith(
-    fetch(req).then(res => {
+    fetch(req.url, { cache: 'no-cache', credentials: 'same-origin' }).then(res => {
       if (res.ok) { const copy = res.clone(); caches.open(CACHE).then(c => c.put(req, copy)); }
       return res;
     }).catch(() => caches.match(req).then(r => r || (req.mode === 'navigate' ? caches.match('./index.html') : undefined)))
