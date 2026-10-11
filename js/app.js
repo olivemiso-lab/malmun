@@ -94,6 +94,25 @@
   }
   function newCard() { return { phase: 'ask', spoken: '', result: null, typing: false, msg: '' }; }
 
+  // ── 앱 설치 ──
+  // 크롬은 설치할 수 있을 때 beforeinstallprompt를 보낸다. 받아 두었다가 버튼을 누르면 띄운다
+  let installEvent = null;
+  const installed = () => matchMedia('(display-mode: standalone)').matches;
+  const isSamsung = /SamsungBrowser/i.test(navigator.userAgent);
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    installEvent = e;
+    if (!location.hash) render();
+  });
+  window.addEventListener('appinstalled', () => { installEvent = null; render(); });
+
+  function installBanner() {
+    if (installed()) return '';
+    if (isSamsung) return `<div class="banner warn">이 앱은 <b>크롬</b>에서 써 주세요. 삼성 인터넷은 음성 인식이 잘 안 돼요.<br>주소를 복사해 크롬에서 열어 주세요.</div>`;
+    if (installEvent) return `<button class="banner install" data-act="install">📲 <span><b>핸드폰에 앱으로 설치</b><small>홈 화면에서 바로 열 수 있어요</small></span></button>`;
+    return '';
+  }
+
   // ── 화면들 ──
   function header(title, back) {
     return `<header class="top">
@@ -111,6 +130,7 @@
     const stuckN = stuckItems().length;
     return header('영어 말문 트기') + `
     <main>
+      ${installBanner()}
       <section class="hero">
         <div class="dday">${dday}</div>
         <div class="hero-text"><b>${esc(settings.eventName)}</b><span>${esc(settings.eventDate.replace(/-/g, '.'))}</span></div>
@@ -350,6 +370,10 @@
     if (!b) return;
     const act = b.dataset.act;
     if (act === 'speak') speak(b.dataset.text);
+    else if (act === 'install' && installEvent) {
+      installEvent.prompt();
+      installEvent.userChoice.finally(() => { installEvent = null; render(); });
+    }
     else if (act === 'start-set') {
       const set = SETS.find(s => s.id === b.dataset.id);
       let items = setItems(set);

@@ -1,7 +1,10 @@
 {
   "name": "말문 · 영어 말문 트기",
   "short_name": "말문",
+  "id": "./",
   "start_url": "./",
+  "scope": "./",
+  "description": "국제교류 영어, 한국어를 보고 바로 영어로 말하는 연습",
   "display": "standalone",
   "background_color": "#fff8ef",
   "theme_color": "#fff8ef",
